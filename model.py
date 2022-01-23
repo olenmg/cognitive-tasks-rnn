@@ -1,23 +1,75 @@
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+_activation_map = {
+    'relu': F.relu,
+    'tanh': F.tanh,
+    'softplus': F.softplus
+}
+
+
+class RNNCellWithNoise(nn.Module):
+    """ RNN cell with input bias containing Gaussian noise """
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        alpha,
+        nonlinearlity='relu',
+        noise_std=None
+    ):
+        if nonlinearlity not in _activation_map:
+            raise ValueError("nonlinearlity candidates: relu, tanh, softplus")
+
+        self.hidden_size = hidden_size
+        self.alpha = alpha
+        self.nonlinearity = _activation_map[nonlinearlity]
+        if noise_std is not None:
+            self.noise_coef = np.sqrt(2 / alpha * (noise_std ** 2))
+        else:
+            self.noise_coef = 0.
+
+        self.wih = nn.Linear(input_size, hidden_size)
+        self.whh = nn.Linear(hidden_size, hidden_size)
+        self.bias = nn.Parameter(torch.empty(hidden_size))
+
+    def forward(self, input, hidden):
+        batch_size = input.size(0)
+        out = self.wih(input) + self.whh(hidden) + \
+                self.bias + self.noise_coef * torch.normal(size=(self.hidden_size, ))
+        out = self.nonlinearity(out)
+
+        return out
 
 
 ## TODO: Initialize strategy? ... W_ih: Unknown / W_hh: I / 2 (to be updated)
 class CTRNN(nn.Module):
     """ Continuous-time RNN """
-    def __init__(self, input_size, hidden_size, dt=20, tau=100, device='cpu'):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        dt=20,
+        tau=100,
+        nonlinearlity='relu',
+        noise_std=0,
+        device=None
+    ):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.alpha = dt / tau
+        self.noise_coef = np.sqrt(2 / self.alpha * noise_std)
 
-        self.cell = nn.RNNCell(
+        self.rnn_cell = RNNCellWithNoise(
             input_size=input_size,
             hidden_size=hidden_size,
-            bias=True,
-            nonlinearity='relu'
+            alpha=self.alpha,
+            nonlinearlity='relu',
+            noise_std=noise_std
         )
-
         self.device = device
 
     def forward_step(self, input, hidden):
@@ -28,8 +80,8 @@ class CTRNN(nn.Module):
         Return:
             out (torch.Tensor): Next hidden state, (batch_size, hidden_size)
         """
-        out = (1 - self.alpha) * hidden + self.alpha * self.cell(input, hidden)
-        
+        out = (1 - self.alpha) * hidden + self.alpha * self.rnn_cell(input, hidden)
+
         return out
 
     def forward(self, input, hidden=None):
@@ -45,7 +97,7 @@ class CTRNN(nn.Module):
         if hidden is None:
             hidden = torch.zeros(input.size(1), self.hidden_size, device=self.device)
 
-        out = torch.stack([self.cell(input_step, hidden) for input_step in input], dim=0)
+        out = torch.stack([self.rnn_cell(input_step, hidden) for input_step in input], dim=0)
 
         return out, out[-1]
 

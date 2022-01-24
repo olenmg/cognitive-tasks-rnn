@@ -20,6 +20,7 @@ class RNNCellWithNoise(nn.Module):
         nonlinearlity='relu',
         noise_std=None
     ):
+        super().__init__()
         if nonlinearlity not in _activation_map:
             raise ValueError("nonlinearlity candidates: relu, tanh, softplus")
 
@@ -38,7 +39,7 @@ class RNNCellWithNoise(nn.Module):
     def forward(self, input, hidden):
         batch_size = input.size(0)
         out = self.wih(input) + self.whh(hidden) + \
-                self.bias + self.noise_coef * torch.normal(size=(self.hidden_size, ))
+                self.bias + self.noise_coef * torch.normal(mean=0., std=1., size=(self.hidden_size, ))
         out = self.nonlinearity(out)
 
         return out

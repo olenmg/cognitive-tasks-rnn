@@ -5,7 +5,16 @@ Simple re-implementation of Yang, et al. Task representations in neural networks
 ## Dependencies
 - Python 3.9.7
 - PyTorch 1.10.1
-- Gym 0.17.3
+- Gym==0.17.3
+- [NeuroGym](https://github.com/neurogym/neurogym)
+
+**NeuroGym Installation**
+```shell
+git clone https://github.com/neurogym/neurogym.git
+cd neurogym
+pip install -e .
+```
+
 
 ## Usage
 **Train**

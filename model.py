@@ -18,7 +18,8 @@ class RNNCellWithNoise(nn.Module):
         hidden_size,
         alpha,
         nonlinearlity='relu',
-        noise_std=None
+        noise_std=None,
+        device=None
     ):
         super().__init__()
         if nonlinearlity not in _activation_map:
@@ -36,10 +37,16 @@ class RNNCellWithNoise(nn.Module):
         self.whh = nn.Linear(hidden_size, hidden_size)
         self.bias = nn.Parameter(torch.empty(hidden_size))
 
+        self.device = device
+
     def forward(self, input, hidden):
         batch_size = input.size(0)
-        out = self.wih(input) + self.whh(hidden) + \
-                self.bias + self.noise_coef * torch.normal(mean=0., std=1., size=(self.hidden_size, ))
+        out = self.wih(input) + self.whh(hidden) + self.bias + \
+                self.noise_coef * \
+                torch.normal(
+                    mean=0., std=1., 
+                    size=(self.hidden_size, ), device=self.device
+                )
         out = self.nonlinearity(out)
 
         return out
@@ -69,7 +76,8 @@ class CTRNN(nn.Module):
             hidden_size=hidden_size,
             alpha=self.alpha,
             nonlinearlity='relu',
-            noise_std=noise_std
+            noise_std=noise_std,
+            device=device
         )
         self.device = device
 

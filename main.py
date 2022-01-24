@@ -51,7 +51,7 @@ def main():
         nonlinearlity=_hp['nonlinearlity'],
         noise_std=_hp['noise_std'],
         device=device,
-    )
+    ).to(device)
 
     ## Train
     trainer = Trainer(model, dataset, ckpt_path, device)

@@ -6,6 +6,7 @@ import neurogym as ngym
 from neurogym.wrappers import ScheduleEnvs
 from neurogym.utils.scheduler import RandomSchedule
 
+from dataset import load_dataset
 from model import CTRNNWithHead
 from trainer import Trainer
 
@@ -28,17 +29,7 @@ def main():
     os.makedirs(ckpt_path, exist_ok=True) # To save model checkpoints
 
     ## Make simulation dataset
-    tasks = ngym.get_collection('yang19')
-    env = ScheduleEnvs(
-        envs=[gym.make(task, dt=_hp['dt'], dim_ring=_hp['dim_ring']) for task in tasks],
-        schedule=RandomSchedule(len(tasks)),
-        env_input=True
-    )
-    dataset = ngym.Dataset(
-        env,
-        batch_size=_hp['batch_size'],
-        seq_len=_hp['seq_len']
-    )
+    env, dataset = load_dataset(_hp)
     ob_size = dataset.env.observation_space.shape[0]
     act_size = env.action_space.n
 
